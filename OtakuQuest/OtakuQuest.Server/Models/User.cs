@@ -138,6 +138,11 @@ namespace OtakuQuest.Server.Models
                 CurrentHP = TotalMaxHP;
 
                 xpNeeded = Level * 100;
+
+                if (CurrentBoss != null)
+                {
+                    CurrentBossHp = CurrentBoss.MaxHp;
+                }
             }
         }
     }

@@ -81,6 +81,7 @@ namespace OtakuQuest.Server.Controllers
                 .Include(u => u.EquippedWeapon)
                 .Include(u => u.EquippedAvatar)
                 .Include(u => u.EquippedBackground)
+                .Include(u => u.CurrentBoss)
                 .FirstOrDefault(u => u.Id == userId);
             if (player == null)
             {
