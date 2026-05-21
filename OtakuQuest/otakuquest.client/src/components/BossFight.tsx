@@ -6,13 +6,19 @@ import { AllAssets, AvatarAssets, BackgroundAssets } from '../assets';
 interface BossFightProps {
     onBack: () => void;
     pstats: PlayerStatsDto | null;
+    refreshStats: () => void;
 }
 
-const BossFight: React.FC<BossFightProps> = ({ onBack, pstats }) => {
+const BossFight: React.FC<BossFightProps> = ({ onBack, pstats, refreshStats }) => {
     const [bossData, setBossData] = useState<CurrentBossResponseDto | null>(null);
     const [combatLog, setCombatLog] = useState<string[]>(["Fight started! Prepare for battle!"]);
     const [isAttacking, setIsAttacking] = useState(false);
     const [stats, setStats] = useState<PlayerStatsDto | null>(pstats);
+
+    const handleBack = () => {
+        onBack();
+        refreshStats();
+    };
 
     const fetchCombatData = useCallback(async () => {
         try {
@@ -82,7 +88,7 @@ const BossFight: React.FC<BossFightProps> = ({ onBack, pstats }) => {
         <div className="boss-fight-wrapper" style={{ 
             backgroundImage: `url(${BackgroundAssets[stats.backgroundImage || 'Default']})`, 
         }}>
-            <button className="boss-back-btn" onClick={onBack}>⬅ Escape</button>
+            <button className="boss-back-btn" onClick={handleBack}>⬅ Escape</button>
 
             <div className="arena-container">
                 

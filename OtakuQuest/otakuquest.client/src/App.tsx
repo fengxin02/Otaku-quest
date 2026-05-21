@@ -86,6 +86,7 @@ function App() {
                 return <BossFight
                           onBack={() => setCurrentScreen('mainmenu')}
                           pstats={playerStats}
+                          refreshStats={() => fetchStats(true)}
                        />;
             
             default:

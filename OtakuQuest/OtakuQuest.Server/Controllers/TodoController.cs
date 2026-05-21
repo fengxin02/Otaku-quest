@@ -142,7 +142,9 @@ namespace OtakuQuest.Server.Controllers
                     intteligence = 15;
                     break;
             }
-
+            
+            xp = (int) xp * player.Level/2;
+            
             player.AddXp(xp);
             player.Currency += currency;
             player.STR += strength;

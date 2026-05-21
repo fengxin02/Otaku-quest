@@ -101,9 +101,10 @@ namespace OtakuQuest.Server
             app.UseStaticFiles();
             app.UseHttpsRedirection();
             app.UseCors("AllowReactApp");
-            app.UseAuthentication();
-            //authentication token for test1
-            app.UseAuthorization();
+            app.UseAuthentication(); //check if you have token in the header, if you have,
+                                     //validate it and create a User object based on the token claims,
+            app.UseAuthorization(); //check if the User object created by the authentication middleware has the necessary permissions
+                                    //to access the requested resource (like [Authorize] attribute)
 
 
             app.MapControllers();
