@@ -77,7 +77,11 @@ namespace OtakuQuest.Server.Controllers
             {
                 return NotFound("Task not found");
             }
-            var player = _context.Users.FirstOrDefault(u => u.Id == userId);
+            var player = _context.Users
+                .Include(u => u.EquippedWeapon)
+                .Include(u => u.EquippedAvatar)
+                .Include(u => u.EquippedBackground)
+                .FirstOrDefault(u => u.Id == userId);
             if (player == null)
             {
                 return NotFound("Player not found");
