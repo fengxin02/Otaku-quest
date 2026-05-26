@@ -8,7 +8,7 @@ import Luluka from '../assets/Luluka.png';
 import CyberPunkBackground from '../assets/CyberpunkBackground.png';
 import Carlotta from '../assets/Carlotta.png';
 import Heart from '../assets/heart.png';
-import Strengthicon from '../assets/strength.png';
+import Strengthicon from '../assets/Strength.png';
 import Defenseicon from '../assets/DoranShield.png';
 import Intelligenceicon from '../assets/eldenring.png';
 import DiaSword from '../assets/Diamond_Sword.png';
