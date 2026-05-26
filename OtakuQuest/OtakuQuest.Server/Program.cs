@@ -77,14 +77,12 @@ namespace OtakuQuest.Server
             // Enable CORS to allow requests from the React app
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowReactApp",
-                    policy =>
-                    {
-                        var frontendUrl = builder.Configuration.GetValue<string>("FrontendUrl");
-                        policy.WithOrigins(frontendUrl!)
-                              .AllowAnyHeader() //Allow to send JWT Token (Authorization header)
-                              .AllowAnyMethod(); // Allow the GET, POST, PUT, DELETE queries from React app
-                    });
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()    
+                          .AllowAnyMethod()    
+                          .AllowAnyHeader();   
+                });
             });
             var app = builder.Build();
 
@@ -100,7 +98,7 @@ namespace OtakuQuest.Server
             app.UseDefaultFiles();
             app.UseStaticFiles();
             app.UseHttpsRedirection();
-            app.UseCors("AllowReactApp");
+            app.UseCors("AllowAll");
             app.UseAuthentication(); //check if you have token in the header, if you have,
                                      //validate it and create a User object based on the token claims,
             app.UseAuthorization(); //check if the User object created by the authentication middleware has the necessary permissions
