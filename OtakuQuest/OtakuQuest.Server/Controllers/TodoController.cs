@@ -13,7 +13,7 @@ namespace OtakuQuest.Server.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    [EnableRateLimiting("fixed")]
+    //[EnableRateLimiting("fixed")]
     public class TodoController : ControllerBase
     {
         private readonly OtakuQuestDbContext _context;

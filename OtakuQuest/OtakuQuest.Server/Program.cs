@@ -77,31 +77,31 @@ namespace OtakuQuest.Server
                 ValidAudience = builder.Configuration["Jwt:Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))};
                 });
-            // Rate limiting: 1 request per second per user (or per IP for unauthenticated)
-            builder.Services.AddRateLimiter(options =>
-            {
-                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-                options.OnRejected = async (context, cancellationToken) =>
-                {
-                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                    await context.HttpContext.Response.WriteAsync(
-                        "Too many requests. Please wait 1 second before trying again.", cancellationToken);
-                };
-                options.AddPolicy("fixed", context =>
-                {
-                    var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
-                                 ?? context.Connection.RemoteIpAddress?.ToString()
-                                 ?? "unknown";
-                    return RateLimitPartition.GetFixedWindowLimiter(userId, _ =>
-                        new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = 1,
-                            Window = TimeSpan.FromSeconds(1),
-                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                            QueueLimit = 0
-                        });
-                });
-            });
+            //// Rate limiting: 1 request per second per user (or per IP for unauthenticated)
+            //builder.Services.AddRateLimiter(options =>
+            //{
+            //    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            //    options.OnRejected = async (context, cancellationToken) =>
+            //    {
+            //        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            //        await context.HttpContext.Response.WriteAsync(
+            //            "Too many requests. Please wait 1 second before trying again.", cancellationToken);
+            //    };
+            //    options.AddPolicy("fixed", context =>
+            //    {
+            //        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            //                     ?? context.Connection.RemoteIpAddress?.ToString()
+            //                     ?? "unknown";
+            //        return RateLimitPartition.GetFixedWindowLimiter(userId, _ =>
+            //            new FixedWindowRateLimiterOptions
+            //            {
+            //                PermitLimit = 1,
+            //                Window = TimeSpan.FromSeconds(1),
+            //                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            //                QueueLimit = 0
+            //            });
+            //    });
+            //});
 
             builder.Services.AddCors(options =>
             {
@@ -127,7 +127,7 @@ namespace OtakuQuest.Server
             app.UseStaticFiles();
             app.UseHttpsRedirection();
             app.UseCors("AllowAll");
-            app.UseRateLimiter();
+            //app.UseRateLimiter();
             app.UseAuthentication(); //check if you have token in the header, if you have,
                                      //validate it and create a User object based on the token claims,
             app.UseAuthorization(); //check if the User object created by the authentication middleware has the necessary permissions
