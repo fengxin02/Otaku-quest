@@ -5,6 +5,7 @@ import MainMenu from './components/MainMenu';
 import { PlayerProfileService, type PlayerStatsDto } from './api/generated';
 import Shop from './components/Shop';
 import BossFight from './components/BossFight';
+import { Analytics } from '@vercel/analytics/react';
 
 function App() {
     const [playerStats, setPlayerStats] = useState<PlayerStatsDto | null>(null);
@@ -96,6 +97,7 @@ function App() {
 
     return (
         <div>
+            <Analytics />
             {renderScreen()}
         </div>
     );

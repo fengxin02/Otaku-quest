@@ -11,6 +11,7 @@
     "generate-api": "openapi --input ./swagger.json --output ./src/api/generated --client axios --useUnionTypes"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "axios": "^1.13.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
