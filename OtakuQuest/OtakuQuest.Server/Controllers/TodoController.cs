@@ -32,6 +32,12 @@ namespace OtakuQuest.Server.Controllers
             }
             var userId = int.Parse(userIdString);
 
+            var incompleteCount = _context.Tasks
+                .Count(t => t.UserId == userId && t.Status != Models.TaskStatus.Completed);
+            if (incompleteCount >= 100)
+            {
+                return BadRequest("You have reached the maximum of 100 active challenges. Complete some first!");
+            }
 
             var newTask = new Models.TodoTask
             {
