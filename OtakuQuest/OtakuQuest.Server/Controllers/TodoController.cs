@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using OtakuQuest.Server.Data;
 using OtakuQuest.Server.DTOs;
@@ -12,6 +13,7 @@ namespace OtakuQuest.Server.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [EnableRateLimiting("fixed")]
     public class TodoController : ControllerBase
     {
         private readonly OtakuQuestDbContext _context;
