@@ -44,6 +44,7 @@ namespace OtakuQuest.Server.Controllers
                 _context.Items.Add(defaultBackground);
             }
 
+            await _context.SaveChangesAsync();
 
             //new user 
             var newUser = new User
