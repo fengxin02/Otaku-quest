@@ -20,27 +20,30 @@ function App() {
         try {
             const response = await PlayerProfileService.getApiPlayerProfileMyStats();
             setPlayerStats(response);
+            return response;
         } catch (error) {
             console.error("Failed to fetch player stats:", error);
+            return null;
         } finally {
-            setIsStatsLoading(false); 
+            setIsStatsLoading(false);
         }
     };
 
-    useEffect( ()=>{
-
-        const token = localStorage.getItem('token');
-        if(token) {
-            fetchStats();
-            if(!playerStats){
-                localStorage.removeItem('token');
-                setPlayerStats(null);
-                setCurrentScreen('login');
+    useEffect(() => {        
+        const checkAuth = async () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                const stats = await fetchStats();
+                if (!stats) {
+                    localStorage.removeItem('token');
+                    setPlayerStats(null);
+                    setCurrentScreen('login');
+                } else {
+                    setCurrentScreen('mainmenu');
+                }
             }
-            else{
-                setCurrentScreen('mainmenu');
-            }
-        }
+        };
+        checkAuth();
     }, []);
 
     const handleLoginSuccess = () => {
