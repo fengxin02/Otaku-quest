@@ -33,14 +33,14 @@ namespace OtakuQuest.Server.Controllers
             var defaultAvatar = await _context.Items.FirstOrDefaultAsync(i => i.Name == "Default Avatar");
             if (defaultAvatar == null)
             {
-                defaultAvatar = new Item { Name = "Default Avatar", Type = ItemType.Character, ImageAsset = "Saki" };
+                defaultAvatar = new Item { Name = "Default Avatar", Type = ItemType.Character, ImageAsset = "DefaultAvatar" };
                 _context.Items.Add(defaultAvatar);
             }
 
             var defaultBackground = await _context.Items.FirstOrDefaultAsync(i => i.Name == "Default Background");
             if (defaultBackground == null)
             {
-                defaultBackground = new Item { Name = "Default Background", Type = ItemType.Background, ImageAsset = "Default" };
+                defaultBackground = new Item { Name = "Default Background", Type = ItemType.Background, ImageAsset = "DefaultBackground" };
                 _context.Items.Add(defaultBackground);
             }
 
