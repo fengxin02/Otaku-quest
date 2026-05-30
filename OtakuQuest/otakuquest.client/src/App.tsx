@@ -6,6 +6,7 @@ import { PlayerProfileService, type PlayerStatsDto } from './api/generated';
 import Shop from './components/Shop';
 import BossFight from './components/BossFight';
 import { Analytics } from '@vercel/analytics/react';
+import './App.css';
 
 function App() {
     const [playerStats, setPlayerStats] = useState<PlayerStatsDto | null>(null);
@@ -59,6 +60,9 @@ function App() {
     };
     
     const renderScreen = () => {
+        if (isStatsLoading && localStorage.getItem('token')) {
+            return <div className="app-loading">Loading...</div>;
+        }
         switch (currentScreen) {
             case 'login':
                 return <Auth onLoginSuccess={handleLoginSuccess} />;

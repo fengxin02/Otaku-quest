@@ -1,1 +1,9 @@
-﻿
+﻿.app-loading {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: rgb(23, 23, 99);
+    font-size: 1.5rem;
+    font-weight: bold;
+}
