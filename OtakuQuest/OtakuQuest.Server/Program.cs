@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using OtakuQuest.Server.Data;
+using OtakuQuest.Server.Services;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -61,6 +62,7 @@ namespace OtakuQuest.Server
             });
             builder.Services.AddDbContext<OtakuQuestDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+            builder.Services.AddScoped<TodoService>();
 
             // Configure JWT authentication
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
