@@ -50,7 +50,9 @@ const Auth = ({ onLoginSuccess }: { onLoginSuccess: () => void }) => {
             }
         } catch (error) {
             const apiError = error as ApiError;
-            setMessage(apiError.body?.message || 'Something went wrong at communication or your username or password is incorrect. Please try again.');
+            const raw = apiError.body;
+            const msg = typeof raw === 'string' ? raw : raw?.message;
+            setMessage(msg || 'Something went wrong at communication or your username or password is incorrect. Please try again.');
         }
         finally {
             setIsRegistering(false);
