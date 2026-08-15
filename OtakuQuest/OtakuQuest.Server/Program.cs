@@ -63,6 +63,7 @@ namespace OtakuQuest.Server
             builder.Services.AddDbContext<OtakuQuestDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
             builder.Services.AddScoped<TodoService>();
+            builder.Services.AddScoped<PlayerProfileService>();
 
             // Configure JWT authentication
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>

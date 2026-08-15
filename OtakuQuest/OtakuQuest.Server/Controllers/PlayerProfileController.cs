@@ -1,9 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using OtakuQuest.Server.Data;
 using OtakuQuest.Server.DTOs;
+using OtakuQuest.Server.Services;
 using System.Security.Claims;
 
 namespace OtakuQuest.Server.Controllers
@@ -13,55 +11,40 @@ namespace OtakuQuest.Server.Controllers
     [Authorize] //this makes this controller protected, only authenticated users can access it JWT
     public class PlayerProfileController : ControllerBase
     {
-        private readonly OtakuQuestDbContext _context;
+        private readonly PlayerProfileService _playerProfileService;
 
-        public PlayerProfileController(OtakuQuestDbContext context)
+        public PlayerProfileController(PlayerProfileService playerProfileService)
         {
-            _context = context;
+            _playerProfileService = playerProfileService;
         }
 
         [HttpGet("my-stats")]
         public async Task<ActionResult<PlayerStatsDto>> GetStats()
         {
-            //check the token
-            // A "User" objektumot a .NET automatikusan feltölti a token alapján!
-            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if(userIdString == null)
+            var userId = GetCurrentUserId();
+            if (userId == null)
             {
                 return Unauthorized("User ID not found in token");
             }
-            var userId = int.Parse(userIdString);
 
-            var player = await _context.Users
-                .Include(u => u.EquippedAvatar)
-                .Include(u => u.EquippedBackground)
-                .Include(u => u.EquippedWeapon)
-                .FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (player == null)
+            var result = await _playerProfileService.GetStats(userId.Value);
+            if (!result.Succeeded)
             {
-                return NotFound("Player not found");
+                return result.ErrorStatusCode == 404
+                    ? NotFound(result.Error)
+                    : BadRequest(result.Error);
             }
+            return Ok(result.Data);
+        }
 
-            var statsDto = new PlayerStatsDto
+        private int? GetCurrentUserId()
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdString == null)
             {
-                Username = player.Username,
-                Level = player.Level,
-                XP = player.XP,
-                Currency = player.Currency,
-                STR = player.TotalSTR,
-                INT = player.TotalINT,
-                DEF = player.TotalDEF,
-                CurrentHP = player.CurrentHP,
-                MaxHP = player.TotalMaxHP,
-                AvatarImage = player.EquippedAvatar?.ImageAsset,
-                BackgroundImage = player.EquippedBackground?.ImageAsset,
-                WeaponImage = player.EquippedWeapon?.ImageAsset,
-                WeaponName = player.EquippedWeapon?.Name
-            };
-
-            return Ok(statsDto);
+                return null;
+            }
+            return int.Parse(userIdString);
         }
     }
 }
