@@ -65,6 +65,8 @@ namespace OtakuQuest.Server
             builder.Services.AddScoped<TodoService>();
             builder.Services.AddScoped<PlayerProfileService>();
             builder.Services.AddScoped<ItemService>();
+            builder.Services.AddScoped<BossService>();
+            builder.Services.AddScoped<AuthService>();
 
             // Configure JWT authentication
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
