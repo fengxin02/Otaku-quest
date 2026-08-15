@@ -1,10 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using OtakuQuest.Server.Data;
 using OtakuQuest.Server.DTOs;
 using OtakuQuest.Server.Models;
+using OtakuQuest.Server.Services;
 using System.Security.Claims;
 
 namespace OtakuQuest.Server.Controllers
@@ -14,166 +12,82 @@ namespace OtakuQuest.Server.Controllers
     [Authorize]
     public class ItemController : ControllerBase
     {
-        private readonly OtakuQuestDbContext _context;
+        private readonly ItemService _itemService;
 
-        public ItemController(OtakuQuestDbContext context)
+        public ItemController(ItemService itemService)
         {
-            _context = context;
+            _itemService = itemService;
         }
+
         [HttpGet("shop")]
         public async Task<ActionResult<List<Item>>> GetShopItems()
         {
-            var items = await _context.Items
-                .Where(i => i.IsPurchasable == true).ToListAsync();
+            var items = await _itemService.GetShopItems();
             return Ok(items);
         }
 
         [HttpPost("buy")]
         public async Task<IActionResult> BuyItem([FromBody] BuyItemDto dto)
         {
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var player = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (player == null)
+            var userId = GetCurrentUserId();
+            if (userId == null)
             {
-                return NotFound("Player not found");
+                return Unauthorized("User ID not found in token");
             }
 
-            var itemToBuy = await _context.Items.FirstOrDefaultAsync(i => i.Id == dto.ItemId);
-            if (itemToBuy == null)
+            var result = await _itemService.BuyItem(userId.Value, dto);
+            if (!result.Succeeded)
             {
-                return NotFound("Item not found");
+                return result.ErrorStatusCode == 404
+                    ? NotFound(result.Error)
+                    : BadRequest(result.Error);
             }
-            bool alreadyOwns = await _context.UserItems
-                .AnyAsync(ui => ui.UserId == userId && ui.ItemId == dto.ItemId);
-            if (alreadyOwns)
-            {
-                return BadRequest("You already own this item!");
-            }
-
-            if (player.Currency < itemToBuy.Price)
-            {
-                return BadRequest("Not enough currency!");
-            }
-
-            player.Currency -= itemToBuy.Price;
-
-            _context.UserItems.Add(new UserItem
-            {
-                UserId = player.Id,
-                ItemId = itemToBuy.Id
-            });
-
-            await _context.SaveChangesAsync();
-            return Ok(new { Message = $"Successfully purchased {itemToBuy.Name}!" });
+            return Ok(new { Message = $"Successfully purchased {result.Data!.Name}!" });
         }
 
         [HttpPost("equip")]
         public async Task<IActionResult> EquipItem([FromBody] EquipItemDto dto)
         {
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var player = await _context.Users
-                .Include(u => u.EquippedWeapon)
-                .Include(u => u.EquippedAvatar)
-                .Include(u => u.EquippedBackground)
-                .FirstOrDefaultAsync(u => u.Id == userId);
-            if (player == null)
+            var userId = GetCurrentUserId();
+            if (userId == null)
             {
-                return NotFound("Player not found");
+                return Unauthorized("User ID not found in token");
             }
 
-            var itemExist = await _context.Items.
-                FirstOrDefaultAsync(i => i.Id == dto.ItemId);
-            if (itemExist == null)
+            var result = await _itemService.EquipItem(userId.Value, dto);
+            if (!result.Succeeded)
             {
-                return NotFound("Item not found");
+                return result.ErrorStatusCode == 404
+                    ? NotFound(result.Error)
+                    : BadRequest(result.Error);
             }
-            var userItem = await _context.UserItems
-                .Include(ui => ui.Item)
-                .FirstOrDefaultAsync(ui => ui.UserId == userId && ui.ItemId == dto.ItemId);
-            if (userItem == null)
-            {
-                return BadRequest("You don't own this item!");
-            }
-            var itemToEquip = userItem.Item;
-
-            //bool wasFullHp = player.CurrentHP >= player.TotalMaxHP;
-            double hpPercentBefore = (double)player.CurrentHP / player.TotalMaxHP;
-            switch (itemToEquip.Type)
-            {
-                case ItemType.Weapon:
-                    player.EquippedWeaponId = itemToEquip.Id;
-                    player.EquippedWeapon = itemToEquip;
-                    break;
-                case ItemType.Character:
-                    player.EquippedAvatarId = itemToEquip.Id;
-                    player.EquippedAvatar = itemToEquip;
-                    break;
-                case ItemType.Background:
-                    player.EquippedBackgroundId = itemToEquip.Id;
-                    player.EquippedBackground = itemToEquip;
-                    break;
-                default:
-                    return BadRequest("Invalid item type!");
-            }
-
-            //if (wasFullHp)
-            //{
-            //    player.CurrentHP = player.TotalMaxHP;
-            //}
-            //else if (player.CurrentHP > player.TotalMaxHP)
-            //{
-            //    player.CurrentHP = player.TotalMaxHP;
-            //}
-            player.CurrentHP = (int)(player.TotalMaxHP * hpPercentBefore);
-            await _context.SaveChangesAsync();
-            return Ok(new { Message = $"Successfully equipped {itemToEquip.Name}!" });
-
+            return Ok(new { Message = $"Successfully equipped {result.Data!.Name}!" });
         }
 
         [HttpGet("inventory")]
         public async Task<ActionResult<List<Item>>> GetMyInventory()
         {
-
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var player = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (player == null)
+            var userId = GetCurrentUserId();
+            if (userId == null)
             {
-                return NotFound("Player not found");
+                return Unauthorized("User ID not found in token");
             }
 
-            var myItems = await _context.UserItems
-                .Where(ui => ui.UserId == userId)
-                .Select(ui => ui.Item) 
-                .ToListAsync();
-
-            return Ok(myItems);
+            var result = await _itemService.GetMyInventory(userId.Value);
+            if (!result.Succeeded)
+            {
+                return result.ErrorStatusCode == 404
+                    ? NotFound(result.Error)
+                    : BadRequest(result.Error);
+            }
+            return Ok(result.Data);
         }
+
         [HttpPost("create")]
-       
-        [AllowAnonymous] 
+        [AllowAnonymous]
         public async Task<IActionResult> CreateItem([FromBody] CreateItemDto dto)
         {
-            var newItem = new Item
-            {
-                Name = dto.Name,
-                Description = dto.Description,
-                Type = dto.Type,
-                Price = dto.Price,
-                ImageAsset = dto.ImageAsset,
-                HpBonus = dto.HpBonus,
-                StrBonus = dto.StrBonus,
-                IntBonus = dto.IntBonus,
-                DefBonus = dto.DefBonus,
-                HpMultiplier = dto.HpMultiplier,
-                StrMultiplier = dto.StrMultiplier,
-                IntMultiplier = dto.IntMultiplier,
-                DefMultiplier = dto.DefMultiplier,
-                IsPurchasable = dto.IsPurchasable 
-            };
-
-            _context.Items.Add(newItem);
-            await _context.SaveChangesAsync();
+            var newItem = await _itemService.CreateItem(dto);
 
             return Ok(new
             {
@@ -182,6 +96,14 @@ namespace OtakuQuest.Server.Controllers
             });
         }
 
+        private int? GetCurrentUserId()
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdString == null)
+            {
+                return null;
+            }
+            return int.Parse(userIdString);
+        }
     }
 }
-
