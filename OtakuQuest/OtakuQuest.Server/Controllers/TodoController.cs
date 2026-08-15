@@ -47,8 +47,14 @@ namespace OtakuQuest.Server.Controllers
                 return Unauthorized("User ID not found in token");
             }
 
-            var tasks = _todoService.GetTasks(userId.Value);
-            return Ok(tasks);
+            var result = _todoService.GetTasks(userId.Value);
+            if (!result.Succeeded)
+            {
+                return result.ErrorStatusCode == 404
+                    ? NotFound(result.Error)
+                    : BadRequest(result.Error);
+            }
+            return Ok(result.Data);
         }
 
         [HttpPost("{id}/complete")] //POST /api/todo/5/complete

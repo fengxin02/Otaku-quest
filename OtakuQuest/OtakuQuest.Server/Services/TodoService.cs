@@ -16,6 +16,12 @@ namespace OtakuQuest.Server.Services
 
         public ServiceResult<TodoTask> CreateTask(int userId, CreateTaskDto dto)
         {
+            var player = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (player == null)
+            {
+                return ServiceResult<TodoTask>.Failure("Player not found", 404);
+            }
+
             //Check if the user has reached the limit of 100 incomplete tasks 
             var incompleteCount = _context.Tasks
                 .Count(t => t.UserId == userId && t.Status != Models.TaskStatus.Completed);
@@ -39,10 +45,16 @@ namespace OtakuQuest.Server.Services
             return ServiceResult<TodoTask>.Success(newTask);
         }
 
-        public List<TodoTask> GetTasks(int userId)
+        public ServiceResult<List<TodoTask>> GetTasks(int userId)
         {
+            var player = _context.Users.FirstOrDefault(u => u.Id == userId);
+            if (player == null)
+            {
+                return ServiceResult<List<TodoTask>>.Failure("Player not found", 404);
+            }
+
             var tasks = _context.Tasks.Where(t => t.UserId == userId).ToList();
-            return tasks;
+            return ServiceResult<List<TodoTask>>.Success(tasks);
         }
 
         public ServiceResult<CompleteTaskResponseDto> CompleteTask(int userId, int id)
@@ -101,7 +113,7 @@ namespace OtakuQuest.Server.Services
                     currency = 300;
                     break;
             }
-            int intteligence = 0;
+            int intelligence = 0;
             int strength = 0;
             int defence = 0;
             //str, int, def
@@ -117,10 +129,10 @@ namespace OtakuQuest.Server.Services
                     defence = 5;
                     break;
                 case TaskType.Social:
-                    intteligence = 8;
+                    intelligence = 8;
                     break;
                 case TaskType.Study:
-                    intteligence = 15;
+                    intelligence = 15;
                     break;
             }
 
@@ -129,7 +141,7 @@ namespace OtakuQuest.Server.Services
             player.AddXp(xp);
             player.Currency += currency;
             player.STR += strength;
-            player.INT += intteligence;
+            player.INT += intelligence;
             player.DEF += defence;
 
             _context.SaveChanges();
@@ -139,7 +151,7 @@ namespace OtakuQuest.Server.Services
                 XPReward = xp,
                 CurrencyReward = currency,
                 StrengthReward = strength,
-                IntelligenceReward = intteligence,
+                IntelligenceReward = intelligence,
                 DefenceReward = defence,
                 NewLevel = player.Level,
                 CurrentXP = player.XP,
