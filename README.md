@@ -22,7 +22,7 @@
 * `openapi-typescript-codegen` (For auto-generating API clients and DTOs)
 
 **Backend:**
-* C# .NET 8 (Web API)
+* C# .NET 10 LTS (Web API)
 * Entity Framework Core (EF Core)
 * SQL Server (LocalDB for development)
 * JWT Authentication & BCrypt
@@ -33,8 +33,8 @@ Follow these instructions to get a copy of the project up and running on your lo
 
 ### Prerequisites
 * [Node.js](https://nodejs.org/) (v18 or higher)
-* [.NET 8.0 SDK](https://dotnet.microsoft.com/download)
-* [Visual Studio](https://visualstudio.microsoft.com/) or VS Code
+* [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (stable; selected by `global.json`)
+* [Visual Studio 2026](https://visualstudio.microsoft.com/) or VS Code with C# tooling
 * SQL Server Express / LocalDB
 
 ### 1. Backend Setup (C# .NET)
@@ -42,10 +42,11 @@ Follow these instructions to get a copy of the project up and running on your lo
 2. Open the **Package Manager Console** and run the database migrations to build your local SQL database:
    ```powershell
    Update-Database
+   ```
 
 3.  Press `F5` or click **Run** to start the API. The Swagger documentation will open in your browser (usually `https://localhost:xxxx`).
 
-### 2\. Frontend Setup (React)
+### 2. Frontend Setup (React)
 
 1.  Open a new terminal and navigate to the frontend client directory:
     ```bash
@@ -64,3 +65,4 @@ Follow these instructions to get a copy of the project up and running on your lo
     npm run dev
     ```
 5.  Open your browser and navigate to `http://localhost:5173` (or the port Vite provides) to start your adventure\!
+
