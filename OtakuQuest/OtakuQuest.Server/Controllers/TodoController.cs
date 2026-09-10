@@ -76,6 +76,29 @@ namespace OtakuQuest.Server.Controllers
             return Ok(result.Data);
         }
 
+        [HttpPost("{id}/finish")]
+        public IActionResult FinishTask(int id)
+        {
+            var userId = GetCurrentUserId();
+
+            if (userId == null)
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var result = _todoService.FinishTask(userId.Value, id);
+
+            if (!result.Succeeded)
+            {
+                return result.ErrorStatusCode == 404
+                    ? NotFound(result.Error)
+                    : BadRequest(result.Error);
+            }
+
+            return NoContent();
+        }
+
+
         private int? GetCurrentUserId()
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);

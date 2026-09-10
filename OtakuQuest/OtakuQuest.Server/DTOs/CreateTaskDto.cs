@@ -13,5 +13,7 @@ namespace OtakuQuest.Server.DTOs
         public TaskType Type { get; set; }
         [Required]
         public DifficultyRank DifficultyRank { get; set; }
+        [Required]
+        public bool IsRepeatable { get; set; } = false;
     }
 }

@@ -24,5 +24,11 @@ namespace OtakuQuest.Server.Models
         public TaskStatus Status { get; set; }
         [Required]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        [Required]
+        public bool IsRepeatable { get; set; } = false;
+        [Required]
+        public int CompletionCount { get; set; } = 0;
+        [Required]
+        public DateTime? LastCompletedAt { get; set; }
     }
 }

@@ -38,7 +38,8 @@ namespace OtakuQuest.Server.Services
                 Type = dto.Type,
                 DifficultyRank = dto.DifficultyRank,
                 Status = Models.TaskStatus.InProgress,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                IsRepeatable = dto.IsRepeatable,
             };
             _context.Tasks.Add(newTask);
             _context.SaveChanges();
@@ -80,7 +81,15 @@ namespace OtakuQuest.Server.Services
             {
                 return ServiceResult<CompleteTaskResponseDto>.Failure("This Challenge is already completed");
             }
-            task.Status = Models.TaskStatus.Completed;
+
+            task.CompletionCount++;
+
+            task.LastCompletedAt = DateTime.UtcNow;
+
+            if (!task.IsRepeatable)
+            {
+                task.Status = Models.TaskStatus.Completed;
+            }
 
             // Reward the player based on the task's difficulty
             int xp = 0;
@@ -147,7 +156,9 @@ namespace OtakuQuest.Server.Services
             _context.SaveChanges();
             var responseDto = new CompleteTaskResponseDto
             {
-                Message = "Challenge completed successfully!",
+                Message = task.IsRepeatable
+                                ? $"Challenge completed {task.CompletionCount} times!"
+                                : "Challenge completed successfully!",
                 XPReward = xp,
                 CurrencyReward = currency,
                 StrengthReward = strength,
@@ -158,6 +169,33 @@ namespace OtakuQuest.Server.Services
             };
 
             return ServiceResult<CompleteTaskResponseDto>.Success(responseDto);
+        }
+
+        public ServiceResult<bool> FinishTask(int userId, int id)
+        {
+            var task = _context.Tasks
+                .FirstOrDefault(t => t.Id == id && t.UserId == userId);
+
+            if (task == null)
+            {
+                return ServiceResult<bool>.Failure("Task not found", 404);
+            }
+
+            if (!task.IsRepeatable)
+            {
+                return ServiceResult<bool>.Failure(
+                    "Only repeatable challenges can be finished this way");
+            }
+
+            if (task.Status == Models.TaskStatus.Completed)
+            {
+                return ServiceResult<bool>.Success(true);
+            }
+
+            task.Status = Models.TaskStatus.Completed;
+            _context.SaveChanges();
+
+            return ServiceResult<bool>.Success(true);
         }
     }
 }
