@@ -111,6 +111,42 @@
     transform: scale(1.05);
 }
 
+.quest-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.finish-quest-btn {
+    background: transparent;
+    color: #475569;
+    border: 1px solid #94a3b8;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s ease-out, border-color 0.2s ease-out;
+}
+
+.finish-quest-btn:hover:not(:disabled) {
+    background: #e2e8f0;
+    border-color: #64748b;
+}
+
+.finish-quest-btn:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.quest-action-error {
+    padding: 10px 12px;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #991b1b;
+    font-weight: 700;
+}
+
 
 .add-quest-input:focus { border-color: #3b82f6; }
 

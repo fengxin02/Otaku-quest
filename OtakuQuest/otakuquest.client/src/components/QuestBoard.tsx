@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TodoService, type DifficultyRank, type TodoTask } from '../api/generated'; 
+import { ApiError, TodoService, type DifficultyRank, type TodoTask } from '../api/generated'; 
 import './QuestBoard.css';
 
 interface QuestBoardProps {
@@ -27,7 +27,9 @@ const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTask
     const [description, setDescription] = useState('');
     const [type, setType] = useState<TodoTask['type']>(0);
     const [difficultyRank, setDifficultyRank] = useState<DifficultyRank>(0);
-
+    const [isRepeatable, setIsRepeatable] = useState(false);
+    const [finishingQuestId, setFinishingQuestId] = useState<number | null>(null);
+    const [finishError, setFinishError] = useState<string | null>(null);
 
     const fetchQuests = async () => {
         try {
@@ -56,6 +58,7 @@ const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTask
                 title: newTaskTitle,
                 description: description,
                 type: type,
+                isRepeatable: isRepeatable,
                 difficultyRank: difficultyRank
             });
             
@@ -64,6 +67,7 @@ const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTask
             setType(0);
             setDifficultyRank(0);
             setIsAdding(false);  
+            setIsRepeatable(false);
             fetchQuests();       // fetching the quests again to show the new one
         } catch (error) {
             console.error("Problem creating quest", error);
@@ -99,11 +103,48 @@ const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTask
         return ranks[rankNum] || 'Unknown';
     }
 
+    const handleFinishQuest = async (id: number) => {
+        if (finishingQuestId !== null) return;
+
+        setFinishingQuestId(id);
+        setFinishError(null);
+
+        try {
+            await TodoService.postApiTodoFinish(id);
+
+            // Update immediately so a successful finish never looks like a dead click.
+            setQuests(currentQuests => currentQuests.map(quest =>
+                quest.id === id
+                    ? { ...quest, status: 2 as const }
+                    : quest
+            ));
+        } catch (error) {
+            console.error("Problem finishing quest", error);
+
+            if (error instanceof ApiError) {
+                const message = typeof error.body === 'string'
+                    ? error.body
+                    : error.body?.message ?? error.body?.title;
+
+                setFinishError(message || `Could not finish the quest (HTTP ${error.status}).`);
+            } else {
+                setFinishError('Could not reach the server. Check that the API is running and try again.');
+            }
+        } finally {
+            setFinishingQuestId(null);
+        }
+    };
+
     if (loading) return <div className="quest-loading">Searching for quests... </div>;
 
     return (
         <div className="quest-board-container">
-            
+            {finishError && (
+                <div className="quest-action-error" role="alert">
+                    {finishError}
+                </div>
+            )}
+             
             <div className="quest-list">
                 {quests.length === 0 ? (
                     <p className="no-quests-msg">No active quests available. Create one!</p>
@@ -118,14 +159,29 @@ const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTask
                             onClick={() => toggleQuestDetails(quest.id)}>
                                 <h4 className="quest-title">{quest.title}</h4>
                                 {showCompletedTasks ? <span></span> :
+                                <div className="quest-actions">
                                 <button 
                                     className="complete-quest-btn" 
                                     onClick={(e) =>{
                                         e.stopPropagation(); 
                                         handleCompleteQuest(quest.id);}}
                                 >
-                                    ✓ Complete
+                                    {quest.isRepeatable ? '✓ Complete Once' : '✓ Complete'}
                                 </button>
+                                {quest.isRepeatable && (
+                                    <button
+                                        type="button"
+                                        className="finish-quest-btn"
+                                        disabled={finishingQuestId === quest.id}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleFinishQuest(quest.id);
+                                        }}
+                                    >
+                                        {finishingQuestId === quest.id ? 'Finishing...' : 'Finish Quest'}
+                                    </button>
+                                )}
+                                </div>
                                 }
                             </div>
                             {expandedQuestId === quest.id && (
@@ -199,7 +255,18 @@ const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTask
                             </select>
                         </div>
                     </div>
+                        <label className="repeatable-option">
+                            <input
+                                type="checkbox"
+                                checked={isRepeatable}
+                                onChange={(e) => setIsRepeatable(e.target.checked)}
+                            />
 
+                            <span>
+                                <strong>Repeatable</strong>
+                                <small>Every time you complete this quest, you will receive a reward and the quest will remain available.</small>
+                            </span>
+                        </label>
                     <div className="form-buttons">
                         <button type="submit" className="save-quest-btn">Save</button>
                         <button type="button" className="cancel-quest-btn" onClick={() => setIsAdding(false)}>Cancel</button>

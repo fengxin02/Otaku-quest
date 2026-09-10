@@ -16,5 +16,8 @@ export type TodoTask = {
     difficultyRank: DifficultyRank;
     status: TaskStatus;
     createdAt: string;
+    isRepeatable: boolean;
+    completionCount: number;
+    lastCompletedAt?: string | null;
 };
 

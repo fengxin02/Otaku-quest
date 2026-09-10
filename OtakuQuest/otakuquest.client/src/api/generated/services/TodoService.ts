@@ -50,4 +50,20 @@ export class TodoService {
             },
         });
     }
+    /**
+     * @param id
+     * @returns any OK
+     * @throws ApiError
+     */
+    public static postApiTodoFinish(
+        id: number,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/Todo/{id}/finish',
+            path: {
+                'id': id,
+            },
+        });
+    }
 }

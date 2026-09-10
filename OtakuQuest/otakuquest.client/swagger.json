@@ -31,24 +31,7 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthResponseDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthResponseDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthResponseDto"
-                }
-              }
-            }
+            "description": "OK"
           }
         }
       }
@@ -511,6 +494,29 @@
           }
         }
       }
+    },
+    "/api/Todo/{id}/finish": {
+      "post": {
+        "tags": [
+          "Todo"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -833,6 +839,7 @@
       "CreateTaskDto": {
         "required": [
           "difficultyRank",
+          "isRepeatable",
           "title",
           "type"
         ],
@@ -851,6 +858,9 @@
           },
           "difficultyRank": {
             "$ref": "#/components/schemas/DifficultyRank"
+          },
+          "isRepeatable": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -1110,9 +1120,11 @@
       },
       "TodoTask": {
         "required": [
+          "completionCount",
           "createdAt",
           "difficultyRank",
           "id",
+          "isRepeatable",
           "status",
           "title",
           "type",
@@ -1152,6 +1164,18 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "isRepeatable": {
+            "type": "boolean"
+          },
+          "completionCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastCompletedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false

@@ -9,5 +9,6 @@ export type CreateTaskDto = {
     description?: string | null;
     type: TaskType;
     difficultyRank: DifficultyRank;
+    isRepeatable: boolean;
 };
 
