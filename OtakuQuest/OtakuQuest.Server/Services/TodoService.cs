@@ -120,19 +120,19 @@ namespace OtakuQuest.Server.Services
             switch (task.Type)
             {
                 case TaskType.Health:
-                    defence = 10;
+                    defence = 4;
                     break;
                 case TaskType.Workout:
-                    strength = 5;
+                    strength = 4;
                     break;
                 case TaskType.Hobby:
-                    defence = 5;
+                    defence = 2;
                     break;
                 case TaskType.Social:
-                    intelligence = 8;
+                    intelligence = 2;
                     break;
                 case TaskType.Study:
-                    intelligence = 15;
+                    intelligence = 4;
                     break;
             }
 

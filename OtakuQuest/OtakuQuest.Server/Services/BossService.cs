@@ -99,7 +99,7 @@ namespace OtakuQuest.Server.Services
             var result = new CombatResultDto();
 
             // --- Player Attack ---
-            int playerDamage = Math.Max(1, player.TotalSTR + (player.TotalINT * 2) - boss.DEF);
+            int playerDamage = CalculateDamage(player.TotalSTR, player.TotalINT, boss.DEF);
             player.CurrentBossHp -= playerDamage;
             result.PlayerDamageDealt = playerDamage;
 
@@ -134,7 +134,7 @@ namespace OtakuQuest.Server.Services
             }
 
             // --- BOSS Attack ---
-            int bossDamage = Math.Max(1, boss.STR + (boss.INT * 2) - player.TotalDEF);
+            int bossDamage = CalculateDamage(boss.STR, boss.INT, player.TotalDEF);
             player.CurrentHP -= bossDamage;
             result.BossDamageDealt = bossDamage;
 
@@ -155,6 +155,17 @@ namespace OtakuQuest.Server.Services
 
             await _context.SaveChangesAsync();
             return ServiceResult<CombatResultDto>.Success(result);
+        }
+
+        private static int CalculateDamage(int strength, int intelligence, int defence)
+        {
+            double attackValue = 6d * Math.Sqrt(Math.Max(0, strength))
+                + 6d * Math.Sqrt(Math.Max(0, intelligence));
+            double defenceValue = 4d * Math.Sqrt(Math.Max(0, defence));
+
+            return Math.Max(
+                1,
+                (int)Math.Round(attackValue - defenceValue, MidpointRounding.AwayFromZero));
         }
     }
 }
