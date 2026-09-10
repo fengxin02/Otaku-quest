@@ -28,7 +28,6 @@ namespace OtakuQuest.Server.Models
         public bool IsRepeatable { get; set; } = false;
         [Required]
         public int CompletionCount { get; set; } = 0;
-        [Required]
         public DateTime? LastCompletedAt { get; set; }
     }
 }

@@ -40,6 +40,7 @@ namespace OtakuQuest.Server.Services
                 Status = Models.TaskStatus.InProgress,
                 CreatedAt = DateTime.UtcNow,
                 IsRepeatable = dto.IsRepeatable,
+                LastCompletedAt = null,
             };
             _context.Tasks.Add(newTask);
             _context.SaveChanges();
