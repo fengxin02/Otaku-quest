@@ -194,6 +194,7 @@ namespace OtakuQuest.Server.Services
             }
 
             task.Status = Models.TaskStatus.Completed;
+            task.LastCompletedAt = DateTime.UtcNow;
             _context.SaveChanges();
 
             return ServiceResult<bool>.Success(true);

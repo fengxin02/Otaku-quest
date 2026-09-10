@@ -76,6 +76,7 @@
 }
 .quest-meta {
     display: flex;
+    flex-wrap: wrap;
     gap: 15px;
 }
 
@@ -86,6 +87,163 @@
     font-size: 0.85rem;
     font-weight: bold;
     color: #334155;
+}
+
+.type-badge,
+.difficulty-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.type-badge::before,
+.difficulty-badge::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    content: '';
+}
+
+.type-study {
+    background: oklch(0.94 0.045 275);
+    color: oklch(0.43 0.15 275);
+}
+
+.type-workout {
+    background: oklch(0.95 0.055 55);
+    color: oklch(0.48 0.15 45);
+}
+
+.type-hobby {
+    background: oklch(0.95 0.05 345);
+    color: oklch(0.48 0.15 345);
+}
+
+.type-social {
+    background: oklch(0.95 0.045 215);
+    color: oklch(0.44 0.11 220);
+}
+
+.type-health {
+    background: oklch(0.95 0.05 155);
+    color: oklch(0.4 0.12 155);
+}
+
+.difficulty-e {
+    background: oklch(0.94 0.018 255);
+    color: oklch(0.44 0.035 255);
+}
+
+.difficulty-d {
+    background: oklch(0.94 0.045 155);
+    color: oklch(0.4 0.12 155);
+}
+
+.difficulty-c {
+    background: oklch(0.94 0.045 245);
+    color: oklch(0.42 0.13 245);
+}
+
+.difficulty-b {
+    background: oklch(0.94 0.045 292);
+    color: oklch(0.43 0.16 292);
+}
+
+.difficulty-a {
+    background: oklch(0.95 0.06 75);
+    color: oklch(0.47 0.13 65);
+}
+
+.difficulty-s {
+    background: oklch(0.94 0.055 25);
+    color: oklch(0.46 0.18 25);
+}
+
+.repeatable-badge {
+    background: oklch(0.94 0.04 292);
+    color: oklch(0.43 0.16 292);
+}
+
+.quest-completion-summary {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.7fr) minmax(240px, 1.3fr);
+    gap: 10px;
+}
+
+.completion-stat {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 11px 13px;
+    border: 1px solid oklch(0.88 0.025 155);
+    border-radius: 10px;
+    background: oklch(0.97 0.018 155);
+}
+
+.completion-stat-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: oklch(0.82 0.11 155);
+    color: oklch(0.3 0.09 155);
+    font-weight: 900;
+}
+
+.completion-stat-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.completion-stat-copy strong {
+    overflow: hidden;
+    color: oklch(0.29 0.025 255);
+    font-size: 0.95rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.completion-stat-copy small {
+    margin-top: 2px;
+    color: oklch(0.5 0.025 255);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.completion-time {
+    border-color: oklch(0.88 0.025 250);
+    background: oklch(0.97 0.015 250);
+}
+
+.completion-time .completion-stat-icon {
+    background: oklch(0.88 0.07 250);
+    color: oklch(0.38 0.12 250);
+}
+
+.quest-completed-state {
+    border: 1px solid oklch(0.84 0.06 155);
+    background: oklch(0.95 0.045 155);
+}
+
+.quest-completed-state .completion-stat-icon {
+    background: oklch(0.78 0.12 155);
+    color: oklch(0.28 0.08 155);
+}
+
+.quest-completed-state .completion-stat-copy strong {
+    color: oklch(0.38 0.12 155);
+}
+
+.completion-spacer {
+    visibility: hidden;
 }
 
 .quest-title {
@@ -215,6 +373,70 @@
     border: 2px solid #e2e8f0;
 }
 
+.repeatable-option {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+    padding: 13px 14px;
+    border: 1px solid oklch(0.84 0.025 255);
+    border-radius: 10px;
+    background: oklch(0.985 0.006 255);
+    cursor: pointer;
+    transition: border-color 0.2s ease-out, background-color 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.repeatable-option:hover {
+    border-color: oklch(0.7 0.09 292);
+    background: oklch(0.97 0.025 292);
+}
+
+.repeatable-option.is-selected {
+    border-color: oklch(0.61 0.18 292);
+    background: oklch(0.95 0.045 292);
+    box-shadow: 0 0 0 2px oklch(0.78 0.1 292 / 0.24);
+}
+
+.repeatable-checkbox {
+    width: 20px;
+    height: 20px;
+    margin: 2px 0 0;
+    accent-color: oklch(0.55 0.2 292);
+    cursor: pointer;
+}
+
+.repeatable-checkbox:focus-visible {
+    outline: 3px solid oklch(0.72 0.13 292 / 0.55);
+    outline-offset: 3px;
+}
+
+.repeatable-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.repeatable-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: oklch(0.3 0.045 275);
+    font-size: 0.95rem;
+    line-height: 1.25;
+}
+
+.repeatable-icon {
+    color: oklch(0.53 0.2 292);
+    font-size: 1.1rem;
+}
+
+.repeatable-description {
+    color: oklch(0.49 0.025 255);
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
 .add-quest-input {
     padding: 12px 15px;
     border: 2px solid #cbd5e1;
@@ -274,4 +496,19 @@
     background-size: 1.2rem;
     
     padding-right: 40px; 
+}
+
+@media (max-width: 640px) {
+    .quest-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .quest-completion-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .completion-stat-copy strong {
+        white-space: normal;
+    }
 }

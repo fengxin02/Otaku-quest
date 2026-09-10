@@ -9,12 +9,12 @@ interface QuestBoardProps {
 
 
  const borderLeftColor: Record<number, string> = {
-    0: "#3b82f6",
-    1: "#10b981",
-    2: "#f59e0b",
-    3: "#8b5cf6",
-    4: "#000000",
-    5: "#ef4444"
+    0: "oklch(0.58 0.04 255)",
+    1: "oklch(0.62 0.14 155)",
+    2: "oklch(0.62 0.14 245)",
+    3: "oklch(0.58 0.18 292)",
+    4: "oklch(0.72 0.15 75)",
+    5: "oklch(0.58 0.2 25)"
 
 };
 const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTasks }) => {
@@ -103,6 +103,30 @@ const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTask
         return ranks[rankNum] || 'Unknown';
     }
 
+    const getTaskTypeClass = (typeNum: number) => {
+        const classes = ['type-study', 'type-workout', 'type-hobby', 'type-social', 'type-health'];
+        return classes[typeNum] || 'type-unknown';
+    };
+
+    const getDifficultyClass = (rankNum: number) => {
+        const classes = ['difficulty-e', 'difficulty-d', 'difficulty-c', 'difficulty-b', 'difficulty-a', 'difficulty-s'];
+        return classes[rankNum] || 'difficulty-unknown';
+    };
+
+    const formatCompletedAt = (value?: string | null) => {
+        if (!value) return 'Not recorded';
+
+        const completedAt = new Date(value);
+        if (Number.isNaN(completedAt.getTime()) || completedAt.getFullYear() < 2000) {
+            return 'Not recorded';
+        }
+
+        return new Intl.DateTimeFormat(undefined, {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+        }).format(completedAt);
+    };
+
     const handleFinishQuest = async (id: number) => {
         if (finishingQuestId !== null) return;
 
@@ -115,7 +139,7 @@ const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTask
             // Update immediately so a successful finish never looks like a dead click.
             setQuests(currentQuests => currentQuests.map(quest =>
                 quest.id === id
-                    ? { ...quest, status: 2 as const }
+                    ? { ...quest, status: 2 as const, lastCompletedAt: new Date().toISOString() }
                     : quest
             ));
         } catch (error) {
@@ -188,9 +212,51 @@ const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTask
                                     <div className="quest-details">
                                         <p><strong>Description:</strong> {quest.description || ''}</p>
                                         <div className="quest-meta">
-                                            <span className="quest-badge">Type: {getTaskTypeName(quest.type)}</span>
-                                            <span className="quest-badge">Difficulty: {getDifficultyName(quest.difficultyRank)}</span>
+                                            <span className={`quest-badge type-badge ${getTaskTypeClass(quest.type)}`}>
+                                                Type: {getTaskTypeName(quest.type)}
+                                            </span>
+                                            <span className={`quest-badge difficulty-badge ${getDifficultyClass(quest.difficultyRank)}`}>
+                                                Difficulty: {getDifficultyName(quest.difficultyRank)}
+                                            </span>
+                                            {quest.isRepeatable && <span className="quest-badge repeatable-badge">Repeatable</span>}
                                         </div>
+                                        {showCompletedTasks && (
+                                            quest.isRepeatable ? (
+                                                <div className="quest-completion-summary">
+                                                    <div className="completion-stat">
+                                                        <span className="completion-stat-icon" aria-hidden="true">✓</span>
+                                                        <span className="completion-stat-copy">
+                                                            <strong>{quest.completionCount}</strong>
+                                                            <small>{quest.completionCount === 1 ? 'completion' : 'completions'}</small>
+                                                        </span>
+                                                    </div>
+                                                    <div className="completion-stat completion-time">
+                                                        <span className="completion-stat-icon" aria-hidden="true">◷</span>
+                                                        <span className="completion-stat-copy">
+                                                            <strong>{formatCompletedAt(quest.lastCompletedAt)}</strong>
+                                                            <small>completed at</small>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="quest-completion-summary">
+                                                <div className="completion-stat quest-completed-state">
+                                                    <span className="completion-stat-icon" aria-hidden="true">✓</span>
+                                                    <span className="completion-stat-copy">
+                                                        <strong>Completed</strong>
+                                                        <small className="completion-spacer" aria-hidden="true">status</small>
+                                                    </span>
+                                                </div>
+                                                 <div className="completion-stat completion-time">
+                                                        <span className="completion-stat-icon" aria-hidden="true">◷</span>
+                                                        <span className="completion-stat-copy">
+                                                            <strong>{formatCompletedAt(quest.lastCompletedAt)}</strong>
+                                                            <small>completed at</small>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )
+                                        )}
                                     </div>
                                 )}
                             </React.Fragment>
@@ -255,16 +321,22 @@ const QuestBoard: React.FC<QuestBoardProps> = ({ refreshStats, showCompletedTask
                             </select>
                         </div>
                     </div>
-                        <label className="repeatable-option">
+                        <label className={`repeatable-option ${isRepeatable ? 'is-selected' : ''}`}>
                             <input
                                 type="checkbox"
+                                className="repeatable-checkbox"
                                 checked={isRepeatable}
                                 onChange={(e) => setIsRepeatable(e.target.checked)}
+                                aria-describedby="repeatable-description"
                             />
-
-                            <span>
-                                <strong>Repeatable</strong>
-                                <small>Every time you complete this quest, you will receive a reward and the quest will remain available.</small>
+                            <span className="repeatable-copy">
+                                <strong className="repeatable-title">
+                                    <span className="repeatable-icon" aria-hidden="true">↻</span>
+                                    Repeatable quest
+                                </strong>
+                                <small id="repeatable-description" className="repeatable-description">
+                                    Complete it many times for rewards, then finish it when the habit is done.
+                                </small>
                             </span>
                         </label>
                     <div className="form-buttons">
