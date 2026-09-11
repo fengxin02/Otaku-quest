@@ -15,5 +15,6 @@ namespace OtakuQuest.Server.DTOs
 
         public string? RewardItemName { get; set; }
         public string Message { get; set; } = string.Empty;
+        public List<string> Events { get; set; } = new();
     }
 }
