@@ -8,10 +8,14 @@ namespace OtakuQuest.Server.Services
     public class BossService
     {
         private readonly OtakuQuestDbContext _context;
+        private readonly SkillAssignmentService _skillAssignmentService;
 
-        public BossService(OtakuQuestDbContext context)
+        public BossService(
+            OtakuQuestDbContext context,
+            SkillAssignmentService skillAssignmentService)
         {
             _context = context;
+            _skillAssignmentService = skillAssignmentService;
         }
 
         public async Task<Boss> CreateBoss(CreateBossDto dto)
@@ -38,6 +42,7 @@ namespace OtakuQuest.Server.Services
         public async Task<ServiceResult<CurrentBossResponseDto>> GetCurrentBoss(int userId)
         {
             var player = await _context.Users
+                .Include(u => u.EquippedAvatar)
                 .Include(u => u.CurrentBoss).ThenInclude(b => b.RewardItem)
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
@@ -66,12 +71,106 @@ namespace OtakuQuest.Server.Services
                 player.CurrentBossId = nextBoss.Id;
                 player.CurrentBossHp = nextBoss.MaxHp;
                 player.CurrentBoss = nextBoss;
-                await _context.SaveChangesAsync();
-
-                return ServiceResult<CurrentBossResponseDto>.Success(new CurrentBossResponseDto { Boss = nextBoss, CurrentHp = player.CurrentBossHp });
             }
 
-            return ServiceResult<CurrentBossResponseDto>.Success(new CurrentBossResponseDto { Boss = player.CurrentBoss, CurrentHp = player.CurrentBossHp });
+            var combatState = await GetOrCreateCombatStateAsync(player.Id);
+            await _skillAssignmentService.EnsureAssignmentsAsync(
+                player.EquippedAvatar,
+                player.CurrentBoss);
+
+            await _context.SaveChangesAsync();
+
+            return ServiceResult<CurrentBossResponseDto>.Success(
+                await BuildCurrentBossResponseAsync(player, combatState));
+        }
+
+        private async Task<UserCombatState> GetOrCreateCombatStateAsync(int userId)
+        {
+            var combatState = await _context.UserCombatStates
+                .FirstOrDefaultAsync(state => state.UserId == userId);
+
+            if (combatState != null)
+                return combatState;
+
+            combatState = new UserCombatState { UserId = userId };
+            _context.UserCombatStates.Add(combatState);
+            return combatState;
+        }
+
+        private async Task<CurrentBossResponseDto> BuildCurrentBossResponseAsync(
+            User player,
+            UserCombatState combatState)
+        {
+            var playerSkills = player.EquippedAvatarId.HasValue
+                ? await GetCharacterSkillsAsync(player.EquippedAvatarId.Value)
+                : new List<Skill>();
+
+            var bossSkills = await GetBossSkillsAsync(player.CurrentBoss!.Id);
+
+            var playerCastingSkill = combatState.PlayerCastingSkillId.HasValue
+                ? playerSkills.FirstOrDefault(skill =>
+                    skill.Id == combatState.PlayerCastingSkillId.Value)
+                : null;
+
+            var bossCastingSkill = combatState.BossCastingSkillId.HasValue
+                ? bossSkills.FirstOrDefault(skill =>
+                    skill.Id == combatState.BossCastingSkillId.Value)
+                : null;
+
+            return new CurrentBossResponseDto
+            {
+                Boss = player.CurrentBoss,
+                CurrentHp = Math.Max(0, player.CurrentBossHp),
+                TurnNumber = combatState.TurnNumber,
+                PlayerComboReady = combatState.PlayerComboReady,
+                BossComboReady = combatState.BossComboReady,
+                PlayerSkills = playerSkills.Select(skill => new CombatSkillDto
+                {
+                    Id = skill.Id,
+                    Name = skill.Name,
+                    Description = skill.Description,
+                    Slot = skill.Slot,
+                    CastTurns = skill.CastTurns,
+                    UnlockLevel = skill.UnlockLevel,
+                    DamageMultiplier = skill.DamageMultiplier,
+                    ComboBonusMultiplier = skill.ComboBonusMultiplier,
+                    IsUnlocked = player.Level >= skill.UnlockLevel
+                }).ToList(),
+                PlayerCasting = playerCastingSkill == null
+                    ? null
+                    : new CastingSkillDto
+                    {
+                        SkillId = playerCastingSkill.Id,
+                        SkillName = playerCastingSkill.Name,
+                        TurnsRemaining = combatState.PlayerCastTurnsRemaining
+                    },
+                BossCasting = bossCastingSkill == null
+                    ? null
+                    : new CastingSkillDto
+                    {
+                        SkillId = bossCastingSkill.Id,
+                        SkillName = bossCastingSkill.Name,
+                        TurnsRemaining = combatState.BossCastTurnsRemaining
+                    }
+            };
+        }
+
+        private async Task<List<Skill>> GetCharacterSkillsAsync(int characterItemId)
+        {
+            return await _context.CharacterSkills
+                .Where(link => link.CharacterItemId == characterItemId)
+                .Select(link => link.Skill)
+                .OrderBy(skill => skill.Slot)
+                .ToListAsync();
+        }
+
+        private async Task<List<Skill>> GetBossSkillsAsync(int bossId)
+        {
+            return await _context.BossSkills
+                .Where(link => link.BossId == bossId)
+                .Select(link => link.Skill)
+                .OrderBy(skill => skill.Slot)
+                .ToListAsync();
         }
 
         public async Task<ServiceResult<CombatResultDto>> AttackBoss(int userId)

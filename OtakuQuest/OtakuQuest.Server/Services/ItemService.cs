@@ -96,6 +96,20 @@ namespace OtakuQuest.Server.Services
                 case ItemType.Character:
                     player.EquippedAvatarId = itemToEquip.Id;
                     player.EquippedAvatar = itemToEquip;
+
+                    var combatState = await _context.UserCombatStates
+                        .FirstOrDefaultAsync(state => state.UserId == player.Id);
+
+                    if (combatState != null)
+                    {
+                        combatState.TurnNumber = 1;
+                        combatState.PlayerCastingSkillId = null;
+                        combatState.PlayerCastTurnsRemaining = 0;
+                        combatState.PlayerComboReady = false;
+                        combatState.BossCastingSkillId = null;
+                        combatState.BossCastTurnsRemaining = 0;
+                        combatState.BossComboReady = false;
+                    }
                     break;
                 case ItemType.Background:
                     player.EquippedBackgroundId = itemToEquip.Id;

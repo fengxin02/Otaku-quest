@@ -141,6 +141,34 @@ namespace OtakuQuest.Server.Migrations
                 name: "IX_UserCombatStates_PlayerCastingSkillId",
                 table: "UserCombatStates",
                 column: "PlayerCastingSkillId");
+
+            migrationBuilder.InsertData(
+                table: "Skills",
+                columns: new[]
+                {
+                    "Id", "Name", "Description", "Slot", "CastTurns",
+                    "UnlockLevel", "DamageMultiplier", "ComboBonusMultiplier",
+                    "AppliesCombo", "ConsumesCombo"
+                },
+                values: new object[,]
+                {
+                    { 1, "Focused Strike", "Concentrate power and prepare the ultimate.", 0, 1, 1, 1.70m, 0.00m, true, false },
+                    { 2, "Heroic Finish", "A decisive attack empowered by Focused Strike.", 1, 2, 5, 2.80m, 2.00m, false, true },
+                    { 3, "Petal Brand", "Mark the enemy with gathering petals.", 0, 1, 1, 1.70m, 0.00m, true, false },
+                    { 4, "Thousand Petal Bloom", "Detonate the petal mark for massive damage.", 1, 2, 5, 2.80m, 2.00m, false, true },
+                    { 5, "Dissonant Note", "Plant a magical resonance in the enemy.", 0, 1, 1, 1.70m, 0.00m, true, false },
+                    { 6, "Final Movement", "Complete the movement and amplify its resonance.", 1, 2, 5, 2.80m, 2.00m, false, true },
+                    { 7, "Predator's Trace", "Leave a trace that guides the finishing attack.", 0, 1, 1, 1.70m, 0.00m, true, false },
+                    { 8, "Crimson Hunt", "Consume the trace for a brutal finishing blow.", 1, 2, 5, 2.80m, 2.00m, false, true },
+                    { 9, "Crystal Target", "Fix a crystal target onto the enemy.", 0, 1, 1, 1.70m, 0.00m, true, false },
+                    { 10, "Winter's Verdict", "Shatter the target with concentrated force.", 1, 2, 5, 2.80m, 2.00m, false, true },
+                    { 11, "Teacher's Mark", "Mark the enemy for the final lesson.", 0, 1, 1, 1.70m, 0.00m, true, false },
+                    { 12, "Mach 20 Lesson", "Deliver the final lesson at impossible speed.", 1, 2, 5, 2.80m, 2.00m, false, true },
+                    { 13, "Burning Brand", "Prepare the target for Bowser's inferno.", 0, 1, 1, 1.70m, 0.00m, true, false },
+                    { 14, "Koopa Inferno", "A huge flame attack empowered by Burning Brand.", 1, 2, 1, 2.80m, 2.00m, false, true },
+                    { 15, "Assassination Lesson", "Expose a weakness for the final exam.", 0, 1, 1, 1.70m, 0.00m, true, false },
+                    { 16, "Final Exam", "Exploit the exposed weakness with overwhelming speed.", 1, 2, 1, 2.80m, 2.00m, false, true }
+                });
         }
 
         /// <inheritdoc />
