@@ -65,6 +65,7 @@ namespace OtakuQuest.Server.Services
                 .Include(u => u.EquippedWeapon)
                 .Include(u => u.EquippedAvatar)
                 .Include(u => u.EquippedBackground)
+                .Include(u => u.CurrentBoss)
                 .FirstOrDefaultAsync(u => u.Id == userId);
             if (player == null)
             {
@@ -87,31 +88,22 @@ namespace OtakuQuest.Server.Services
             var itemToEquip = userItem.Item;
 
             double hpPercentBefore = (double)player.CurrentHP / player.TotalMaxHP;
+            bool equipmentChanged;
+
             switch (itemToEquip.Type)
             {
                 case ItemType.Weapon:
+                    equipmentChanged = player.EquippedWeaponId != itemToEquip.Id;
                     player.EquippedWeaponId = itemToEquip.Id;
                     player.EquippedWeapon = itemToEquip;
                     break;
                 case ItemType.Character:
+                    equipmentChanged = player.EquippedAvatarId != itemToEquip.Id;
                     player.EquippedAvatarId = itemToEquip.Id;
                     player.EquippedAvatar = itemToEquip;
-
-                    var combatState = await _context.UserCombatStates
-                        .FirstOrDefaultAsync(state => state.UserId == player.Id);
-
-                    if (combatState != null)
-                    {
-                        combatState.TurnNumber = 1;
-                        combatState.PlayerCastingSkillId = null;
-                        combatState.PlayerCastTurnsRemaining = 0;
-                        combatState.PlayerComboReady = false;
-                        combatState.BossCastingSkillId = null;
-                        combatState.BossCastTurnsRemaining = 0;
-                        combatState.BossComboReady = false;
-                    }
                     break;
                 case ItemType.Background:
+                    equipmentChanged = player.EquippedBackgroundId != itemToEquip.Id;
                     player.EquippedBackgroundId = itemToEquip.Id;
                     player.EquippedBackground = itemToEquip;
                     break;
@@ -120,6 +112,19 @@ namespace OtakuQuest.Server.Services
             }
 
             player.CurrentHP = (int)(player.TotalMaxHP * hpPercentBefore);
+
+            if (equipmentChanged)
+            {
+                var combatState = await _context.UserCombatStates
+                    .FirstOrDefaultAsync(state => state.UserId == player.Id);
+
+                combatState?.Reset();
+
+                if (player.CurrentBoss != null)
+                    player.CurrentBossHp = player.CurrentBoss.MaxHp;
+                player.CurrentHP = player.TotalMaxHP;
+            }
+
             await _context.SaveChangesAsync();
             return ServiceResult<Item>.Success(itemToEquip);
         }

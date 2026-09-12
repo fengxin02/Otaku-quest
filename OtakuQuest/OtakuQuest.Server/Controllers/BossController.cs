@@ -64,6 +64,25 @@ namespace OtakuQuest.Server.Controllers
             return Ok(result.Data);
         }
 
+        [HttpPost("action")]
+        public async Task<ActionResult<CombatResultDto>> TakeAction(
+            [FromBody] CombatActionDto dto)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var result = await _bossService.TakeTurn(userId.Value, dto);
+            if (!result.Succeeded)
+            {
+                return StatusCode(result.ErrorStatusCode, result.Error);
+            }
+
+            return Ok(result.Data);
+        }
+
         private int? GetCurrentUserId()
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);

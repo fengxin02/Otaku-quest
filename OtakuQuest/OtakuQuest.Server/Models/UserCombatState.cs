@@ -19,5 +19,16 @@ namespace OtakuQuest.Server.Models
 
         [Timestamp]
         public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
+        public void Reset()
+        {
+            TurnNumber = 1;
+            PlayerCastingSkillId = null;
+            PlayerCastTurnsRemaining = 0;
+            PlayerComboReady = false;
+            BossCastingSkillId = null;
+            BossCastTurnsRemaining = 0;
+            BossComboReady = false;
+        }
     }
 }

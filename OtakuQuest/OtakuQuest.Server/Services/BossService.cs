@@ -34,6 +34,7 @@ namespace OtakuQuest.Server.Services
                 RewardCurrency = dto.RewardCurrency,
                 RewardItemId = dto.RewardItemId
             };
+
             _context.Bosses.Add(boss);
             await _context.SaveChangesAsync();
             return boss;
@@ -42,46 +43,159 @@ namespace OtakuQuest.Server.Services
         public async Task<ServiceResult<CurrentBossResponseDto>> GetCurrentBoss(int userId)
         {
             var player = await _context.Users
-                .Include(u => u.EquippedAvatar)
-                .Include(u => u.CurrentBoss).ThenInclude(b => b.RewardItem)
-                .FirstOrDefaultAsync(u => u.Id == userId);
+                .Include(user => user.EquippedAvatar)
+                .Include(user => user.CurrentBoss)
+                    .ThenInclude(boss => boss!.RewardItem)
+                .FirstOrDefaultAsync(user => user.Id == userId);
 
             if (player == null)
-            {
                 return ServiceResult<CurrentBossResponseDto>.Failure("Player not found", 404);
-            }
+
+            bool assignedNewBoss = false;
             if (player.CurrentBoss == null)
             {
                 int nextOrder = player.LastDefeatedBossOrder + 1;
                 var nextBoss = await _context.Bosses
-                    .OrderBy(b => b.Order)
-                    .Include(b => b.RewardItem)
-                    .FirstOrDefaultAsync(b => b.Order == nextOrder);
+                    .Include(boss => boss.RewardItem)
+                    .OrderBy(boss => boss.Order)
+                    .FirstOrDefaultAsync(boss => boss.Order == nextOrder);
+
                 if (nextBoss == null)
                 {
-                    // If no current boss, assign the first one from the database
-                    nextBoss = await _context.Bosses.FirstOrDefaultAsync();
+                    nextBoss = await _context.Bosses
+                        .Include(boss => boss.RewardItem)
+                        .OrderBy(boss => boss.Order)
+                        .FirstOrDefaultAsync();
+
                     if (nextBoss == null)
                     {
-                        return ServiceResult<CurrentBossResponseDto>.Failure("No Boss in this game!", 404);
+                        return ServiceResult<CurrentBossResponseDto>.Failure(
+                            "No Boss in this game!",
+                            404);
                     }
-                    player.LastDefeatedBossOrder = -1; // Reset to the first boss order
+
+                    player.LastDefeatedBossOrder = -1;
                 }
 
                 player.CurrentBossId = nextBoss.Id;
                 player.CurrentBossHp = nextBoss.MaxHp;
                 player.CurrentBoss = nextBoss;
+                assignedNewBoss = true;
             }
 
             var combatState = await GetOrCreateCombatStateAsync(player.Id);
+            if (assignedNewBoss)
+                combatState.Reset();
+
             await _skillAssignmentService.EnsureAssignmentsAsync(
                 player.EquippedAvatar,
-                player.CurrentBoss);
+                player.CurrentBoss!);
 
             await _context.SaveChangesAsync();
 
             return ServiceResult<CurrentBossResponseDto>.Success(
                 await BuildCurrentBossResponseAsync(player, combatState));
+        }
+        // This method is a convenience method for taking a basic attack action. (Maybe delete this?)
+        public Task<ServiceResult<CombatResultDto>> AttackBoss(int userId)
+        {
+            return TakeTurn(userId, new CombatActionDto
+            {
+                ActionType = CombatActionType.BasicAttack
+            });
+        }
+
+        public async Task<ServiceResult<CombatResultDto>> TakeTurn(
+            int userId,
+            CombatActionDto action)
+        {
+            try
+            {
+                var player = await LoadCombatPlayerAsync(userId);
+                if (player == null)
+                    return ServiceResult<CombatResultDto>.Failure("Player not found", 404);
+
+                if (player.CurrentBoss == null)
+                    return ServiceResult<CombatResultDto>.Failure("No Boss for you to fight");
+
+                if (player.CurrentHP <= 0)
+                {
+                    return ServiceResult<CombatResultDto>.Failure(
+                        "No more HP for fighting, level up first, or change your character.");
+                }
+
+                
+                var boss = player.CurrentBoss;
+                var combatState = await GetOrCreateCombatStateAsync(player.Id);
+
+                await _skillAssignmentService.EnsureAssignmentsAsync(
+                    player.EquippedAvatar,
+                    boss);
+
+                // The first action may create the combat state and skill links.
+                // Save them before querying through the link tables.
+                await _context.SaveChangesAsync();
+
+                var playerSkills = await GetCharacterSkillsAsync(player.EquippedAvatar!.Id);
+                var bossSkills = await GetBossSkillsAsync(boss.Id);
+                var result = new CombatResultDto();
+
+                string? actionError = ResolvePlayerAction(
+                    player,
+                    boss,
+                    combatState,
+                    playerSkills,
+                    action,
+                    result);
+
+                if (actionError != null)
+                    return ServiceResult<CombatResultDto>.Failure(actionError);
+
+                if (player.CurrentBossHp <= 0)
+                {
+                    await FinishVictoryAsync(player, boss, combatState, result);
+                    result.Message = string.Join(" ", result.Events);
+                    await _context.SaveChangesAsync();
+                    return ServiceResult<CombatResultDto>.Success(result);
+                }
+
+                ResolveBossAction(player, boss, combatState, bossSkills, result);
+
+                if (player.CurrentHP <= 0)
+                {
+                    player.CurrentHP = 0;
+                    player.CurrentBossHp = boss.MaxHp;
+                    result.PlayerDefeated = true;
+                    result.Events.Add(
+                        $"{boss.Name} defeated you. The Boss recovered all HP.");
+                    combatState.Reset();
+                }
+                else
+                {
+                    combatState.TurnNumber++;
+                }
+
+                result.Message = string.Join(" ", result.Events);
+                await _context.SaveChangesAsync();
+                return ServiceResult<CombatResultDto>.Success(result);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return ServiceResult<CombatResultDto>.Failure(
+                    "This combat turn was already processed. Refresh the battle state.",
+                    409);
+            }
+        }
+
+        private async Task<User?> LoadCombatPlayerAsync(int userId)
+        {
+            return await _context.Users
+                .Include(user => user.EquippedWeapon)
+                .Include(user => user.EquippedAvatar)
+                .Include(user => user.EquippedBackground)
+                .Include(user => user.CurrentBoss)
+                    .ThenInclude(boss => boss!.RewardItem)
+                .FirstOrDefaultAsync(user => user.Id == userId);
         }
 
         private async Task<UserCombatState> GetOrCreateCombatStateAsync(int userId)
@@ -173,90 +287,293 @@ namespace OtakuQuest.Server.Services
                 .ToListAsync();
         }
 
-        public async Task<ServiceResult<CombatResultDto>> AttackBoss(int userId)
+        private static string? ResolvePlayerAction(
+            User player,
+            Boss boss,
+            UserCombatState combatState,
+            List<Skill> playerSkills,
+            CombatActionDto action,
+            CombatResultDto result)
         {
-            var player = await _context.Users
-                .Include(u => u.EquippedWeapon)
-                .Include(u => u.EquippedAvatar)
-                .Include(u => u.EquippedBackground)
-                .Include(u => u.CurrentBoss).ThenInclude(b => b.RewardItem)
-                .FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (player == null)
+            //When player is casting a skill
+            if (combatState.PlayerCastingSkillId.HasValue)
             {
-                return ServiceResult<CombatResultDto>.Failure("Player not found");
-            }
-            if (player.CurrentBoss == null)
-            {
-                return ServiceResult<CombatResultDto>.Failure("No Boss for you to fight");
-            }
+                if (action.ActionType != CombatActionType.ContinueCasting)
+                    return "You are casting and cannot choose another action.";
 
-            if (player.CurrentHP <= 0)
-                return ServiceResult<CombatResultDto>.Failure("No more HP for fighting, level up first!");
+                var castingSkill = playerSkills.FirstOrDefault(skill =>
+                    skill.Id == combatState.PlayerCastingSkillId.Value);
 
-            var boss = player.CurrentBoss;
-            var result = new CombatResultDto();
-
-            // --- Player Attack ---
-            int playerDamage = CalculateDamage(player.TotalSTR, player.TotalINT, boss.DEF);
-            player.CurrentBossHp -= playerDamage;
-            result.PlayerDamageDealt = playerDamage;
-
-            // Check if Boss is defeated
-            if (player.CurrentBossHp <= 0)
-            {
-                result.BossDefeated = true;
-                result.BossDamageDealt = 0;
-                result.Message = $"{boss.Name} defeted! Gained {boss.RewardXP} XP and {boss.RewardCurrency} PrimoGems!";
-
-                //Reward the player
-                player.AddXp(boss.RewardXP);
-                player.Currency += boss.RewardCurrency;
-
-                if (boss.RewardItemId.HasValue)
+                if (castingSkill == null)
                 {
-                    bool alreadyOwns = await _context.UserItems
-                        .AnyAsync(ui => ui.UserId == player.Id && ui.ItemId == boss.RewardItemId);
-
-                    if (!alreadyOwns)
-                    {
-                        _context.UserItems.Add(new UserItem { UserId = player.Id, ItemId = boss.RewardItemId.Value });
-                        result.RewardItemName = boss.RewardItem?.Name;
-                        result.Message += $" Congratulation you got a new Item: {result.RewardItemName}!";
-                    }
+                    return "The casting skill does not belong to " +
+                        "the equipped character.";
                 }
-                player.LastDefeatedBossOrder = boss.Order;
-                player.CurrentBossId = null;
 
-                await _context.SaveChangesAsync();
-                return ServiceResult<CombatResultDto>.Success(result);
+                combatState.PlayerCastTurnsRemaining--;
+
+                if (combatState.PlayerCastTurnsRemaining <= 0)
+                {
+                    ResolvePlayerSkill(player, boss, combatState, castingSkill, result);
+                    combatState.PlayerCastingSkillId = null;
+                    combatState.PlayerCastTurnsRemaining = 0;
+                }
+                else
+                {
+                    result.Events.Add(
+                        $"You continue casting {castingSkill.Name}. " +
+                        $"{combatState.PlayerCastTurnsRemaining} turn(s) remain.");
+                }
+
+                return null;
             }
 
-            // --- BOSS Attack ---
-            int bossDamage = CalculateDamage(boss.STR, boss.INT, player.TotalDEF);
-            player.CurrentHP -= bossDamage;
-            result.BossDamageDealt = bossDamage;
+            if (action.ActionType == CombatActionType.ContinueCasting)
+                return "There is no skill being cast.";
 
-            // Check if player did not suvive the boss attack
-            if (player.CurrentHP <= 0)
+            if (action.ActionType == CombatActionType.BasicAttack)
             {
-                player.CurrentHP = 0;
-                result.PlayerDefeated = true;
-                result.Message = $"Lost! {boss.Name} killed you. Try again with more powerfull items!";
+                ResolvePlayerBasicAttack(player, boss, result);
+                return null;
+            }
 
-                // Reset the boss HP for the next fight
-                player.CurrentBossHp = boss.MaxHp;
+            if (action.ActionType != CombatActionType.Skill || !action.SkillId.HasValue)
+                return "Choose a valid combat action.";
+
+            var selectedSkill = playerSkills.FirstOrDefault(skill =>
+                skill.Id == action.SkillId.Value);
+
+            if (selectedSkill == null)
+                return "This skill does not belong to the equipped character.";
+
+            if (player.Level < selectedSkill.UnlockLevel)
+                return $"This skill unlocks at level {selectedSkill.UnlockLevel}.";
+
+            if (selectedSkill.CastTurns <= 0)
+            {
+                ResolvePlayerSkill(player, boss, combatState, selectedSkill, result);
             }
             else
             {
-                result.Message = $"The fight is going on, you dealt {playerDamage} damage, boss deealt {bossDamage} damage.";
+                combatState.PlayerCastingSkillId = selectedSkill.Id;
+                combatState.PlayerCastTurnsRemaining = selectedSkill.CastTurns;
+                result.Events.Add(
+                    $"You started casting {selectedSkill.Name}. " +
+                    "Casting cannot be cancelled.");
             }
 
-            await _context.SaveChangesAsync();
-            return ServiceResult<CombatResultDto>.Success(result);
+            return null;
         }
 
-        private static int CalculateDamage(int strength, int intelligence, int defence)
+        private static void ResolvePlayerBasicAttack(
+            User player,
+            Boss boss,
+            CombatResultDto result)
+        {
+            int damage = CalculateDamage(player.TotalSTR, player.TotalINT, boss.DEF);
+            player.CurrentBossHp -= damage;
+            result.PlayerDamageDealt += damage;
+            result.Events.Add(
+                $"You used a basic attack and dealt {damage} damage.");
+        }
+
+        private static void ResolvePlayerSkill(
+            User player,
+            Boss boss,
+            UserCombatState combatState,
+            Skill skill,
+            CombatResultDto result)
+        {
+            decimal multiplier = skill.DamageMultiplier;
+            bool comboTriggered = skill.ConsumesCombo && combatState.PlayerComboReady;
+
+            if (comboTriggered)
+            {
+                multiplier += skill.ComboBonusMultiplier;
+                combatState.PlayerComboReady = false;
+            }
+
+            int baseDamage = CalculateDamage(player.TotalSTR, player.TotalINT, boss.DEF);
+            int damage = Math.Max(
+                1,
+                (int)Math.Round(
+                    baseDamage * multiplier,
+                    MidpointRounding.AwayFromZero));
+
+            player.CurrentBossHp -= damage;
+            result.PlayerDamageDealt += damage;
+            result.Events.Add(comboTriggered
+                ? $"{skill.Name} triggered its combo and dealt {damage} damage!"
+                : $"{skill.Name} dealt {damage} damage.");
+
+            if (skill.AppliesCombo)
+            {
+                combatState.PlayerComboReady = true;
+                result.Events.Add("Your character's ultimate combo is ready.");
+            }
+        }
+
+        private static void ResolveBossAction(
+            User player,
+            Boss boss,
+            UserCombatState combatState,
+            List<Skill> bossSkills,
+            CombatResultDto result)
+        {
+            if (combatState.BossCastingSkillId.HasValue)
+            {
+                var castingSkill = bossSkills.FirstOrDefault(skill =>
+                    skill.Id == combatState.BossCastingSkillId.Value);
+
+                if (castingSkill == null)
+                {
+                    combatState.BossCastingSkillId = null;
+                    combatState.BossCastTurnsRemaining = 0;
+                    ResolveBossBasicAttack(player, boss, result);
+                    return;
+                }
+
+                combatState.BossCastTurnsRemaining--;
+
+                if (combatState.BossCastTurnsRemaining <= 0)
+                {
+                    ResolveBossSkill(player, boss, combatState, castingSkill, result);
+                    combatState.BossCastingSkillId = null;
+                    combatState.BossCastTurnsRemaining = 0;
+                }
+                else
+                {
+                    result.Events.Add(
+                        $"{boss.Name} continues casting {castingSkill.Name}. " +
+                        $"{combatState.BossCastTurnsRemaining} turn(s) remain.");
+                }
+
+                return;
+            }
+
+            var normalSkill = bossSkills.FirstOrDefault(skill =>
+                skill.Slot == SkillSlot.Normal);
+            var ultimate = bossSkills.FirstOrDefault(skill =>
+                skill.Slot == SkillSlot.Ultimate);
+            int roll = Random.Shared.Next(100);
+
+            Skill? selectedSkill = null;
+            if (combatState.BossComboReady && ultimate != null && roll < 70)
+                selectedSkill = ultimate;
+            else if (!combatState.BossComboReady && normalSkill != null && roll < 45)
+                selectedSkill = normalSkill;
+
+            if (selectedSkill == null)
+            {
+                ResolveBossBasicAttack(player, boss, result);
+                return;
+            }
+
+            if (selectedSkill.CastTurns <= 0)
+            {
+                ResolveBossSkill(player, boss, combatState, selectedSkill, result);
+                return;
+            }
+
+            combatState.BossCastingSkillId = selectedSkill.Id;
+            combatState.BossCastTurnsRemaining = selectedSkill.CastTurns;
+            result.Events.Add(
+                $"{boss.Name} started casting {selectedSkill.Name}. " +
+                $"It will release after {selectedSkill.CastTurns} turn(s).");
+        }
+
+        private static void ResolveBossBasicAttack(
+            User player,
+            Boss boss,
+            CombatResultDto result)
+        {
+            int damage = CalculateDamage(boss.STR, boss.INT, player.TotalDEF);
+            player.CurrentHP -= damage;
+            result.BossDamageDealt += damage;
+            result.Events.Add(
+                $"{boss.Name} used a basic attack and dealt {damage} damage.");
+        }
+
+        private static void ResolveBossSkill(
+            User player,
+            Boss boss,
+            UserCombatState combatState,
+            Skill skill,
+            CombatResultDto result)
+        {
+            decimal multiplier = skill.DamageMultiplier;
+            bool comboTriggered = skill.ConsumesCombo && combatState.BossComboReady;
+
+            if (comboTriggered)
+            {
+                multiplier += skill.ComboBonusMultiplier;
+                combatState.BossComboReady = false;
+            }
+
+            int baseDamage = CalculateDamage(boss.STR, boss.INT, player.TotalDEF);
+            int damage = Math.Max(
+                1,
+                (int)Math.Round(
+                    baseDamage * multiplier,
+                    MidpointRounding.AwayFromZero));
+
+            player.CurrentHP -= damage;
+            result.BossDamageDealt += damage;
+            result.Events.Add(comboTriggered
+                ? $"{boss.Name}'s {skill.Name} triggered its combo and dealt {damage} damage!"
+                : $"{boss.Name}'s {skill.Name} dealt {damage} damage.");
+
+            if (skill.AppliesCombo)
+            {
+                combatState.BossComboReady = true;
+                result.Events.Add($"{boss.Name}'s ultimate combo is ready.");
+            }
+        }
+
+        private async Task FinishVictoryAsync(
+            User player,
+            Boss boss,
+            UserCombatState combatState,
+            CombatResultDto result)
+        {
+            result.BossDefeated = true;
+            result.Events.Add(
+                $"{boss.Name} defeated! Gained {boss.RewardXP} XP and " +
+                $"{boss.RewardCurrency} PrimoGems!");
+
+            player.LastDefeatedBossOrder = boss.Order;
+            player.CurrentBossId = null;
+            player.CurrentBoss = null;
+            player.CurrentBossHp = 0;
+
+            player.AddXp(boss.RewardXP);
+            player.Currency += boss.RewardCurrency;
+
+            if (boss.RewardItemId.HasValue)
+            {
+                bool alreadyOwns = await _context.UserItems.AnyAsync(item =>
+                    item.UserId == player.Id &&
+                    item.ItemId == boss.RewardItemId.Value);
+
+                if (!alreadyOwns)
+                {
+                    _context.UserItems.Add(new UserItem
+                    {
+                        UserId = player.Id,
+                        ItemId = boss.RewardItemId.Value
+                    });
+                    result.RewardItemName = boss.RewardItem?.Name;
+                    result.Events.Add($"You received {result.RewardItemName}.");
+                }
+            }
+
+            combatState.Reset();
+        }
+
+        private static int CalculateDamage(
+            int strength,
+            int intelligence,
+            int defence)
         {
             double attackValue = 6d * Math.Sqrt(Math.Max(0, strength))
                 + 6d * Math.Sqrt(Math.Max(0, intelligence));
@@ -264,7 +581,9 @@ namespace OtakuQuest.Server.Services
 
             return Math.Max(
                 1,
-                (int)Math.Round(attackValue - defenceValue, MidpointRounding.AwayFromZero));
+                (int)Math.Round(
+                    attackValue - defenceValue,
+                    MidpointRounding.AwayFromZero));
         }
     }
 }
